@@ -433,7 +433,34 @@ io.on('connection', async socket => {
     studentSocket.emit('student-audio-controller', {off : off})
   })
 
-})
+  //! 퀴즈 관련 코드 시작!
+  socket.on("startQuiz", (quizNumber, socketId, callback) => {
+    console.log(quizNumber, socketId) 
+    //todo: 백엔드에서 퀴즈 찾아와야 함 
+    const quizId = quizNumber
+    const question = "다음 중 호랑이는 무엇일까요 ?"
+    const choice1 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/quiz/%E1%84%80%E1%85%A9%E1%84%8B%E1%85%A3%E1%86%BC%E1%84%8B%E1%85%B5.png"
+    const choice2 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/quiz/%E1%84%92%E1%85%A9%E1%84%85%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5.png"
+    const rightAnswer = 2 
+
+    callback(question, choice1, choice2, rightAnswer)
+    socket.broadcast.emit("startQuiz", question, choice1, choice2, rightAnswer)
+  } )
+
+  socket.on("correct", (name)=> {
+    //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
+    console.log('맞앗ㅇ')
+    socket.broadcast.emit("correctNotice", name)
+  })
+  socket.on("wrong", (name)=>{
+  //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
+    console.log('틀렷오')
+    socket.broadcast.emit("wrongNotice", name)
+  
+  })
+  //! 퀴즈 관련 코드 끝!
+
+}) // ! socket connction 끝 
 
 const createWebRtcTransport = async (router) => {
   return new Promise(async (resolve, reject) => {
