@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+</head>
+<body>
+    <form >
+        <input type="text" placeholder="이름을 입력하세요 ✅"/ >
+        <button>강의실 입장</button>
+    </form>
+</body>
+<script>
+
+    
+    const welcomeForm = document.querySelector("form");
+    async function handleWelcomeSubmit(event) {
+        event.preventDefault();
+        const input = welcomeForm.querySelector("input");
+        userNameValue = input.value;
+        localStorage.setItem('userName', userNameValue);
+        input.value = "";
+        window.location.href = 'http://localhost:3001/live/130';
+    }
+    welcomeForm.addEventListener("submit", handleWelcomeSubmit);
+</script>
+</html>
