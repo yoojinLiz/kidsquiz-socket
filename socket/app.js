@@ -27,7 +27,7 @@ if (process.platform != "linux") {
 }
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://10.0.0.238:3000",
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
     allowedHeaders: ["my-custom-header"],
     credentials: true
