@@ -19,7 +19,8 @@ httpServer.listen(4000, () => {
   console.log('listening on port: ' + 4000)
 })
 
-let feAddr = '10.0.0.49'
+let feAddr = process.env.FE
+// let feAddr = '10.0.0.238'
 let socketAddr = process.env.SOCKET
 if (process.platform != "linux") {
 	feAddr = "localhost"
