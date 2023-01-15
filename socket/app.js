@@ -19,16 +19,15 @@ httpServer.listen(4000, () => {
   console.log('listening on port: ' + 4000)
 })
 
-let feAddr = process.env.FE
-// let feAddr = '10.0.0.238'
-let socketAddr = process.env.SOCKET
-if (process.platform != "linux") {
-	feAddr = "localhost"
-  socketAddr = "127.0.0.1"
-}
+// let feAddr = process.env.FE
+// let socketAddr = process.env.SOCKET // 내 주소
+// if (process.platform != "linux") {
+// 	feAddr = "localhost"
+//   socketAddr = "127.0.0.1"
+// }
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST"],
     allowedHeaders: ["my-custom-header"],
     credentials: true
