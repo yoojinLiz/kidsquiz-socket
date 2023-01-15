@@ -1,17 +1,21 @@
 import { Server } from "socket.io";
 import mediasoup from 'mediasoup'
-import https from 'httpolyglot';
+import express from "express";
+import http from "http"; //! 추가
+// import https from 'httpolyglot';
 import fs from 'fs'
 import dotenv from "dotenv"
 dotenv.config()
 
-const options = {
-  key: fs.readFileSync('./server/ssl/key.pem', 'utf-8'),
-  cert: fs.readFileSync('./server/ssl/cert.pem', 'utf-8')
-}
+const app = express(); 
 
-const httpsServer = https.createServer(options)
-httpsServer.listen(4000, () => {
+// const options = {
+//   key: fs.readFileSync('./server/ssl/key.pem', 'utf-8'),
+//   cert: fs.readFileSync('./server/ssl/cert.pem', 'utf-8')
+// }
+
+const httpServer = http.createServer(app); 
+httpServer.listen(4000, () => {
   console.log('listening on port: ' + 4000)
 })
 
@@ -21,7 +25,7 @@ if (process.platform != "linux") {
 	feAddr = "localhost"
   socketAddr = "127.0.0.1"
 }
-const io = new Server(httpsServer, {
+const io = new Server(httpServer, {
   cors: {
     origin: `http://${feAddr}:3000`,
     methods: ["GET", "POST"],
