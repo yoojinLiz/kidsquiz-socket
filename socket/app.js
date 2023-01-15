@@ -2,22 +2,28 @@ import { Server } from "socket.io";
 import mediasoup from 'mediasoup'
 import express from "express";
 import http from "http"; //! 추가
-// import https from 'httpolyglot';
 import fs from 'fs'
 import dotenv from "dotenv"
 dotenv.config()
+import https from 'httpolyglot';
 
-const app = express(); 
+const options = {
+  key: fs.readFileSync('./server/ssl/key.pem', 'utf-8'),
+  cert: fs.readFileSync('./server/ssl/cert.pem', 'utf-8')
+}
 
-// const options = {
-//   key: fs.readFileSync('./server/ssl/key.pem', 'utf-8'),
-//   cert: fs.readFileSync('./server/ssl/cert.pem', 'utf-8')
-// }
-
-const httpServer = http.createServer(app); 
-httpServer.listen(4000, () => {
+const httpsServer = https.createServer(options)
+httpsServer.listen(4000, () => {
   console.log('listening on port: ' + 4000)
 })
+
+
+// const app = express(); 
+// const httpServer = http.createServer(app); 
+
+//const httpServer.listen(4000, () => {
+//   console.log('listening on port: ' + 4000)
+// })
 
 // let feAddr = process.env.FE
 // let socketAddr = process.env.SOCKET // 내 주소
@@ -25,7 +31,9 @@ httpServer.listen(4000, () => {
 // 	feAddr = "localhost"
 //   socketAddr = "127.0.0.1"
 // }
-const io = new Server(httpServer, {
+
+// const io = new Server(httpServer, {
+const io = new Server(httpsServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
