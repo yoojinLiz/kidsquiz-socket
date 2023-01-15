@@ -27,7 +27,7 @@ if (process.platform != "linux") {
 }
 const io = new Server(httpServer, {
   cors: {
-    origin: `http://${feAddr}:3000`,
+    origin: "http://10.0.0.238:3000",
     methods: ["GET", "POST"],
     allowedHeaders: ["my-custom-header"],
     credentials: true
@@ -499,7 +499,8 @@ const createWebRtcTransport = async (router) => {
         listenIps: [
           {
             // ip: `${socketAddr}`, //!!!! replace with relevant IP address
-            ip: '10.0.0.49', //!!!! replace with relevant IP address
+            ip: '3.39.0.224', //!!!! replace with relevant IP address 
+            // ip: '10.0.0.49', //!!!! replace with relevant IP address
             // announcedIp: '10.0.0.141',
           }
         ],
