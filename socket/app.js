@@ -107,7 +107,20 @@ io.on('connection', async socket => {
  socket.on('object-clear', data => {
    socket.broadcast.emit('clearcanvas', data);
  })
- //! 캔버스.js 관련 코드 시작 끝
+ //! 캔버스.js 관련 코드 끝
+
+  //! 퍼즐.js 관련 코드 시작 (연준, 봉수)
+
+  socket.on('sendPuzzleURL', data =>{
+    socket.broadcast.emit('puzzleStart', data);
+  })
+  
+    socket.on('move-puzzle', data =>{
+      socket.broadcast.emit('movesinglepuzzle',data);
+   })
+  
+
+   //! 퍼즐.js 관련 코드 끝
 
 
   const removeItems = (items, socketId, type) => {
