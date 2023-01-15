@@ -19,7 +19,7 @@ httpServer.listen(4000, () => {
   console.log('listening on port: ' + 4000)
 })
 
-let feAddr = process.env.FE
+let feAddr = '10.0.0.49'
 let socketAddr = process.env.SOCKET
 if (process.platform != "linux") {
 	feAddr = "localhost"
@@ -175,7 +175,7 @@ io.on('connection', async socket => {
       }
     }
     
-    console.log("🚀🚀🚀🚀", userName, peers[socket.id])
+    console.log("joinRoom 함수 🚀🚀🚀🚀", userName, peers[socket.id])
     // get Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
 
