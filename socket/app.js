@@ -265,13 +265,14 @@ io.on('connection', async socket => {
     //return all producer transports
     const { roomName } = peers[socket.id]
     const socketName = peers[socket.id].peerDetails.name
+    
 
     let producerList = []
   
     producers.forEach(producerData => {
       if (producerData.socketId !== socket.id && producerData.roomName === roomName) {
         // console.log("🧐🧐", peers[producerData.socketId].peerDetails.name)
-        producerList = [...producerList, [producerData.producer.id, peers[producerData.socketId].peerDetails.name]]
+        producerList = [...producerList, [producerData.producer.id, peers[producerData.socketId].peerDetails.name, producerData.socketId]]
         
       }
     })
@@ -290,6 +291,7 @@ io.on('connection', async socket => {
         // use socket to send producer id to producer
         const socketName = peers[socketId].peerDetails.name
         //Todo: 아래 emit 인자 내용 달라짐 -> 컨트롤러에서 수정 필요 
+        console.log('44444$$$$$$$', socketId)
         producerSocket.emit('new-producer', { producerId: id , socketName: socketName, socketId: socketId })
       }
     })
@@ -420,18 +422,28 @@ io.on('connection', async socket => {
     await consumer.resume()
   })
 
-  //!!!!!! 유나 합친 부분 (01/14)
-  socket.on('video-out', async({socketId , off}) =>{
-    const studentSocket = peers[socketId].socket
-    studentSocket.emit('student-video-controller', {off : off})
-    console.log( "🙊🙊🙊🙊🙊VIDEO" + socketId, off )
-    // producerSocket.emit('new-producer', { producerId: id, socketId : socketId })
-  }) 
+  // //!!!!!! 유나 합친 부분 (01/14)
+  // socket.on('video-out', async({socketId , off}) =>{
+  //   const studentSocket = peers[socketId].socket
+  //   studentSocket.emit('student-video-controller', {off : off})
+  //   console.log( "🙊🙊🙊🙊🙊VIDEO" + socketId, off )
+  //   // producerSocket.emit('new-producer', { producerId: id, socketId : socketId })
+  // }) 
 
-  socket.on('audio-out', async({socketId, off}) =>{
-    console.log( "🙊🙊🙊🙊🙊AUDIO" + socketId, off )
-    studentSocket.emit('student-audio-controller', {off : off})
-  })
+  // socket.on('audio-out', async({socketId, off}) =>{
+  //   console.log( "🙊🙊🙊🙊🙊AUDIO" + socketId, off )
+  //   studentSocket.emit('student-audio-controller', {off : off})
+  // })
+  //!!!!!! 석규 합친 부분 (01/15)
+  socket.on('video-out', ({studentSocketId, on}) =>{
+    //소켓아이디와 같은 프로듀서를 찾아서 onOff를 전달
+    // const studentSocket1 = peers[studentSocketId].socket.id
+    // console.log(studentSocket1)
+    socket.to(studentSocketId).emit('student-video-controller', {
+      on
+    })
+  }) 
+  
 
 })
 
