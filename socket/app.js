@@ -1,11 +1,12 @@
 import { Server } from "socket.io";
 import mediasoup from 'mediasoup'
 import express from "express";
-import http from "http"; //! 추가
-import fs from 'fs'
 import dotenv from "dotenv"
 dotenv.config()
 import https from 'httpolyglot';
+
+import http from "http"; //! 추가
+import fs from 'fs'
 
 // const options = {
 //   key: fs.readFileSync('./server/ssl/key.pem', 'utf-8'),
@@ -17,6 +18,9 @@ import https from 'httpolyglot';
 //   console.log('listening on port: ' + 4000)
 // })
 
+
+// const httpServer = http.createServer(app);
+// const wsServer = SocketIO(httpServer);
 
 const app = express(); 
 const httpServer = http.createServer(app); 
@@ -339,13 +343,18 @@ connections.on('connection', async socket => {
   // see client's socket.emit('transport-connect', ...)
   socket.on('transport-connect', ({ dtlsParameters }) => {
     // console.log('DTLS PARAMS... ', { dtlsParameters })
-    
-    getTransport(socket.id).connect({ dtlsParameters })
+    console.log("여기 완전 중요해!!!!🔥🔥🔥🔥🔥", getTransport(socket.id).dtlsState)
+    // Error: connect() already called [method:transport.connect] 에러 방지 
+    if (getTransport(socket.id).dtlsState == "new") {
+        getTransport(socket.id).connect({ dtlsParameters })
+    }
   })
 
   // see client's socket.emit('transport-produce', ...)
   socket.on('transport-produce', async ({ kind, rtpParameters, appData }, callback) => {
     // call produce based on the prameters from the client
+
+    
     const producer = await getTransport(socket.id).produce({
       kind,
       rtpParameters,
@@ -474,22 +483,27 @@ connections.on('connection', async socket => {
     const choice1 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/quiz/%E1%84%80%E1%85%A9%E1%84%8B%E1%85%A3%E1%86%BC%E1%84%8B%E1%85%B5.png"
     const choice2 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/quiz/%E1%84%92%E1%85%A9%E1%84%85%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5.png"
     const rightAnswer = 2 
-
+    //퀴즈를 시작하는 것은 항상 선생님! 
     callback(question, choice1, choice2, rightAnswer)
-    socket.broadcast.emit("startQuiz", question, choice1, choice2, rightAnswer)
+    socket.broadcast.emit("startQuiz", question, choice1, choice2, rightAnswer, socketId)
   } )
 
-  socket.on("correct", (name)=> {
+  socket.on("correct", (name, hostSocket)=> {
     //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
-    console.log('맞앗ㅇ')
-    socket.broadcast.emit("correctNotice", name)
+    socket.to(hostSocket).emit("correctNotice", name)
+    // socket.broadcast.emit("correctNotice", name)
   })
-  socket.on("wrong", (name)=>{
+  socket.on("wrong", (name, hostSocket)=>{
   //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
-    console.log('틀렷오')
-    socket.broadcast.emit("wrongNotice", name)
-  
+    socket.to(hostSocket).emit("wrongNotice", name)
+    // socket.broadcast.emit("wrongNotice", name)
   })
+  socket.on("finishQuiz", ()=>{
+    //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
+      socket.broadcast.emit("finishQuiz")
+    }
+  
+  )
   //! 퀴즈 관련 코드 끝!
 
 }) // ! socket connction 끝 
@@ -501,7 +515,7 @@ const createWebRtcTransport = async (router) => {
       const webRtcTransport_options = {
         listenIps: [
           {
-            ip: "0.0.0.0", //!!!! replace with relevant IP address
+            ip: "127.0.0.1", //!!!! replace with relevant IP address
             // ip: '3.39.0.224', //!!!! replace with relevant IP address 
             // ip: '10.0.0.49', //!!!! replace with relevant IP address
             // announcedIp: '3.39.0.224',
