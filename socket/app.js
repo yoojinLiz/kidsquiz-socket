@@ -481,6 +481,13 @@ io.on('connection', async socket => {
       on
     })
   }) 
+
+  socket.on('audio-out', ({studentSocketId, on}) =>{
+    console.log(studentSocketId  + "🙊 조용히 하세요")
+    socket.to(studentSocketId).emit('student-audio-controller', {
+      on
+    })
+  }) 
   
 
   //! 퀴즈 관련 코드 시작!
