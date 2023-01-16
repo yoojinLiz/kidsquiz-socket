@@ -42,7 +42,7 @@ const io = new Server(httpsServer, {
   },
 });
 
-// const connections = io.of('/mediasoup')
+const connections = io.of('/sock')
 
 let worker
 let rooms = {}          // { roomName1: { Router, rooms: [ sicketId1, ... ] }, ...}
@@ -50,17 +50,6 @@ let peers = {}          // { socketId1: { roomName1, socket, transports = [id1, 
 let transports = []     // [ { socketId1, roomName1, transport, consumer }, ... ]
 let producers = []      // [ { socketId1, roomName1, producer, }, ... ]
 let consumers = []      // [ { socketId1, roomName1, consumer, }, ... ]
-
-
-
-
-
-
-
-
-
-
-
 
 
 //! 가장 먼저해야 하는 작업 : worker를 생성하는 것 :-) worker가 있어야 router도 transport도 생성할 수 있다. 
@@ -100,7 +89,7 @@ const mediaCodecs = [
   },
 ]
 
-io.on('connection', async socket => {
+connections.on('connection', async socket => {
   // console.log(socket.id)
   
   socket.emit('connection-success', {
