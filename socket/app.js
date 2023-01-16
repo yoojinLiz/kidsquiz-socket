@@ -52,6 +52,17 @@ let producers = []      // [ { socketId1, roomName1, producer, }, ... ]
 let consumers = []      // [ { socketId1, roomName1, consumer, }, ... ]
 
 
+
+
+
+
+
+
+
+
+
+
+
 //! 가장 먼저해야 하는 작업 : worker를 생성하는 것 :-) worker가 있어야 router도 transport도 생성할 수 있다. 
 const createWorker = async () => {
   worker = await mediasoup.createWorker({
@@ -152,12 +163,12 @@ io.on('connection', async socket => {
   }
   })
 
-  socket.on('joinRoom', async (roomName, userName, callback) => {
+  socket.on('joinRoom', async (roomName, userName, isHost, callback) => {
     // create Router if it does not exist
     // const router1 = rooms[roomName] && rooms[roomName].get('data').router || await createRoom(roomName, socket.id)
     socket.join(roomName);
+
     const router1 = await createRoom(roomName, socket.id)
-    
     peers[socket.id] = {
       socket,
       roomName,           // Name for the Router this Peer joined
@@ -166,11 +177,13 @@ io.on('connection', async socket => {
       consumers: [],
       peerDetails: {
         name: userName,
-        isAdmin: false,   // Is this Peer the Admin?
+        // isAdmin: false,   // Is this Peer the Admin?
+        isAdmin: isHost,   // Is this Peer the Admin?
       }
     }
-    
-    console.log("joinRoom 함수 🚀🚀🚀🚀", userName, peers[socket.id])
+
+    console.log("🚀🚀🚀🚀", userName, peers[socket.id])
+    console.log("joinRoom 함수 🚀🚀🚀🚀")
     // get Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
 
@@ -292,8 +305,8 @@ io.on('connection', async socket => {
   
     producers.forEach(producerData => {
       if (producerData.socketId !== socket.id && producerData.roomName === roomName) {
-        // console.log("🧐🧐", peers[producerData.socketId].peerDetails.name)
-        producerList = [...producerList, [producerData.producer.id, peers[producerData.socketId].peerDetails.name, producerData.socketId]]
+        // console.log("🧐🧐", peers[producerData.socketId].peerDetails.isAdmin)
+        producerList = [...producerList, [producerData.producer.id, peers[producerData.socketId].peerDetails.name, producerData.socketId, peers[producerData.socketId].peerDetails.isAdmin]] 
         
       }
     })
@@ -302,6 +315,7 @@ io.on('connection', async socket => {
     callback(producerList)
   })
 
+  
   const informConsumers = (roomName, socketId, id) => {
     console.log(`just joined, id ${id} ${roomName}, ${socketId}`)
     // A new producer just joined
@@ -311,13 +325,14 @@ io.on('connection', async socket => {
         const producerSocket = peers[producerData.socketId].socket
         // use socket to send producer id to producer
         const socketName = peers[socketId].peerDetails.name
+        const isNewSocketHost = peers[socketId].peerDetails.isAdmin
+      
         //Todo: 아래 emit 인자 내용 달라짐 -> 컨트롤러에서 수정 필요 
         console.log('44444$$$$$$$', socketId)
-        producerSocket.emit('new-producer', { producerId: id , socketName: socketName, socketId: socketId })
+        producerSocket.emit('new-producer', { producerId: id , socketName: socketName, socketId: socketId , isNewSocketHost})
       }
     })
   }
-
   const getTransport = (socketId) => {
     const [producerTransport] = transports.filter(transport => transport.socketId === socketId && !transport.consumer)
 
@@ -447,23 +462,9 @@ io.on('connection', async socket => {
     await consumer.resume()
   })
 
-  // //!!!!!! 유나 합친 부분 (01/14)
-  // socket.on('video-out', async({socketId , off}) =>{
-  //   const studentSocket = peers[socketId].socket
-  //   studentSocket.emit('student-video-controller', {off : off})
-  //   console.log( "🙊🙊🙊🙊🙊VIDEO" + socketId, off )
-  //   // producerSocket.emit('new-producer', { producerId: id, socketId : socketId })
-  // }) 
-
-  // socket.on('audio-out', async({socketId, off}) =>{
-  //   console.log( "🙊🙊🙊🙊🙊AUDIO" + socketId, off )
-  //   studentSocket.emit('student-audio-controller', {off : off})
-  // })
   //!!!!!! 석규 합친 부분 (01/15)
   socket.on('video-out', ({studentSocketId, on}) =>{
     //소켓아이디와 같은 프로듀서를 찾아서 onOff를 전달
-    // const studentSocket1 = peers[studentSocketId].socket.id
-    // console.log(studentSocket1)
     socket.to(studentSocketId).emit('student-video-controller', {
       on
     })
@@ -506,7 +507,7 @@ const createWebRtcTransport = async (router) => {
       const webRtcTransport_options = {
         listenIps: [
           {
-            ip: `127.0.0.1`, //!!!! replace with relevant IP address
+            ip: "127.0.0.1", //!!!! replace with relevant IP address
             // ip: '3.39.0.224', //!!!! replace with relevant IP address 
             // ip: '10.0.0.49', //!!!! replace with relevant IP address
             // announcedIp: '3.39.0.224',
