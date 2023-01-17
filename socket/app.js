@@ -105,40 +105,43 @@ connections.on('connection', async socket => {
     socketId: socket.id,
   })
 
-  //! 캔버스.js 관련 코드 시작 (연준)
-  socket.on('object-added', data => {
-    socket.broadcast.emit('new-add', data);
- })
- socket.on('imageobj-added', data => {
-   socket.broadcast.emit('new-addimg', data);
-})
- socket.on('path-added', data => {
-   socket.broadcast.emit('new-addP', data);
-})
- socket.on('object-modified', data => {
-    socket.broadcast.emit('new-modification', data);
- })
- socket.on('object-deleted', data => {
-   socket.broadcast.emit('deleteallcanvas', data);
- })
- socket.on('object-clear', data => {
-   socket.broadcast.emit('clearcanvas', data);
- })
- //! 캔버스.js 관련 코드 끝
 
-  //! 퍼즐.js 관련 코드 시작 (연준, 봉수)
 
-  socket.on('sendPuzzleURL', data =>{
-    socket.broadcast.emit('puzzleStart', data);
-  })
-  
-    socket.on('move-puzzle', data =>{
-      socket.broadcast.emit('movesinglepuzzle',data);
-   })
-  
+  //! 캔버스.js 관련 코드 시작 끝 (연준)
+  // socket.on('object-added', data => {
+  //   socket.broadcast.to(roomName).emit('new-add', data);
+  // })
+  // socket.on('imageobj-added', data => {
+  // socket.broadcast.to(roomName).emit('new-addimg', data);
+  // })
+  // socket.on('path-added', data => {
+  // socket.broadcast.to(roomName).emit('new-addP', data);
+  // })
+  // socket.on('object-modified', data => {
+  //   socket.broadcast.to(roomName).emit('new-modification', data);
+  // })
+  // socket.on('object-deleted', data => {
+  // socket.broadcast.to(roomName).emit('deleteallcanvas', data);
+  // })
+  // socket.on('object-clear', data => {
+  // socket.broadcast.to(roomName).emit('clearcanvas', data);
+  // })
+//! 캔버스.js 관련 코드 끝
 
-   //! 퍼즐.js 관련 코드 끝
+//! 퍼즐.js 관련 코드 시작 (연준, 봉수)
 
+  // socket.on('sendPuzzleURL', data =>{
+  //   socket.broadcast.to(roomName).emit('puzzleStart', data);
+  // })
+
+  // socket.on('move-puzzle', data =>{
+  //   socket.broadcast.to(roomName).emit('movesinglepuzzle',data);
+  // })
+
+  // socket.on('clickup-puzzle', data =>{
+  //   socket.broadcast.to(roomName).emit('solvedpuzzle', data);
+  // })
+//! 퍼즐.js 관련 코드 끝
 
   const removeItems = (items, socketId, type) => {
     items.forEach(item => {
