@@ -106,6 +106,7 @@ connections.on('connection', async socket => {
   })
 
 
+
   //! 캔버스.js 관련 코드 시작 끝 (연준)
   // socket.on('object-added', data => {
   //   socket.broadcast.to(roomName).emit('new-add', data);
@@ -140,7 +141,7 @@ connections.on('connection', async socket => {
   // socket.on('clickup-puzzle', data =>{
   //   socket.broadcast.to(roomName).emit('solvedpuzzle', data);
   // })
-
+//! 퍼즐.js 관련 코드 끝
 
   const removeItems = (items, socketId, type) => {
     items.forEach(item => {
@@ -484,6 +485,13 @@ connections.on('connection', async socket => {
   socket.on('video-out', ({studentSocketId, on}) =>{
     //소켓아이디와 같은 프로듀서를 찾아서 onOff를 전달
     socket.to(studentSocketId).emit('student-video-controller', {
+      on
+    })
+  }) 
+
+  socket.on('audio-out', ({studentSocketId, on}) =>{
+    console.log(studentSocketId  + "🙊 조용히 하세요")
+    socket.to(studentSocketId).emit('student-audio-controller', {
       on
     })
   }) 
