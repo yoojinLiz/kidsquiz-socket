@@ -134,6 +134,9 @@ connections.on('connection', async socket => {
 //! 캔버스.js 관련 코드 끝
 
 //! 퍼즐.js 관련 코드 시작 (연준, 봉수)
+socket.on('solveSign', () =>{   
+  io.emit('allsolve');
+})
 
   socket.on('sendPuzzleURL', data =>{
     // socket.broadcast.emit('puzzleStart', data);
@@ -170,7 +173,7 @@ connections.on('connection', async socket => {
     transports = removeItems(transports, socket.id, 'transport')
 
     try{
-    console.log(peers[socket.id])
+    
     const { roomName } = peers[socket.id]
     delete peers[socket.id]
 
@@ -270,7 +273,8 @@ connections.on('connection', async socket => {
       })
   })
 
-  const addTransport = (transport, roomName, consumer) => {
+  const addTransport = async(transport, roomName, consumer) => {
+    console.log("addTransport호출")
 
     transports = [
       ...transports,
@@ -339,7 +343,7 @@ connections.on('connection', async socket => {
 
   
   const informConsumers = (roomName, socketId, id) => {
-    console.log(`just joined, id ${id} ${roomName}, ${socketId}`)
+    console.log(`just joined, producerid: ${id}  room: ${roomName}, socketId: ${socketId}`)
     // A new producer just joined
     // let all consumers to consume this producer
     producers.forEach(producerData => {
@@ -355,18 +359,19 @@ connections.on('connection', async socket => {
     })
   }
   const getTransport = (socketId) => {
+    console.log("getTransport 에서 확인해보는 socketId. 이게 transports 상의 socketId와 같아야해", socketId)
     const [producerTransport] = transports.filter(transport => transport.socketId === socketId && !transport.consumer)
 
     //!임시
-    if (producerTransport) {
+    // if (producerTransport) {
       return producerTransport.transport 
-    }
+    // }
   }
 
   // see client's socket.emit('transport-connect', ...)
   socket.on('transport-connect', ({ dtlsParameters }) => {
     // console.log('DTLS PARAMS... ', { dtlsParameters })
-    console.log("여기 완전 중요해!!!!🔥🔥🔥🔥🔥", getTransport(socket.id).dtlsState)
+    console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
     // Error: connect() already called [method:transport.connect] 에러 방지 
     if (getTransport(socket.id).dtlsState == "new") {
         getTransport(socket.id).connect({ dtlsParameters })
@@ -374,10 +379,10 @@ connections.on('connection', async socket => {
   })
 
   // see client's socket.emit('transport-produce', ...)
-  socket.on('transport-produce', async ({ kind, rtpParameters, appData }, callback) => {
+  socket.on('transport-produce', async ({ kind, rtpParameters, appData, mysocket }, callback) => {
     // call produce based on the prameters from the client
 
-    
+    console.log(socket.id, "가 emit('transport-produce', ...)🔥")
     const producer = await getTransport(socket.id).produce({
       kind,
       rtpParameters,
@@ -490,7 +495,6 @@ connections.on('connection', async socket => {
 
   //!!!!!! 석규 합친 부분 (01/15)
   socket.on("video-out", ({studentSocketId, on}) =>{
-    console.log("받았다")
     //소켓아이디와 같은 프로듀서를 찾아서 onOff를 전달
     socket.to(studentSocketId).emit('student-video-controller', {on})
   }) 
@@ -506,9 +510,9 @@ connections.on('connection', async socket => {
     console.log(quizNumber, socketId) 
     //todo: 백엔드에서 퀴즈 찾아와야 함 
     const quizId = quizNumber
-    const question = "다음 중 호랑이는 무엇일까요 ?"
-    const choice1 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/quiz/%E1%84%80%E1%85%A9%E1%84%8B%E1%85%A3%E1%86%BC%E1%84%8B%E1%85%B5.png"
-    const choice2 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/quiz/%E1%84%92%E1%85%A9%E1%84%85%E1%85%A1%E1%86%BC%E1%84%8B%E1%85%B5.png"
+    const question = "다음 중 겨울 잠 자는 동물은 어떤 동물일까요 ?"
+    const choice1 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/upload/%E1%84%86%E1%85%AE%E1%86%AB%E1%84%8C%E1%85%A6+%E1%84%83%E1%85%A1%E1%84%85%E1%85%A1%E1%86%B7%E1%84%8C%E1%85%B1.png"
+    const choice2 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/upload/%E1%84%86%E1%85%AE%E1%86%AB%E1%84%8C%E1%85%A6+%E1%84%90%E1%85%A9%E1%84%81%E1%85%B5+.jpeg"
     const rightAnswer = 2 
     //퀴즈를 시작하는 것은 항상 선생님! 
     callback(question, choice1, choice2, rightAnswer)
@@ -535,17 +539,28 @@ connections.on('connection', async socket => {
 
 }) // ! socket connction 끝 
 
+let listenip ;
+let announceip ;
+if (process.platform === "linux" ) {
+   listenip = '10.0.0.49'
+   announceip ='3.39.0.224'
+}
+else {
+   listenip = "127.0.0.1"
+   announceip = null 
+}
+console.log("🎧 listenip is : ", listenip)
+
 const createWebRtcTransport = async (router) => {
+
   return new Promise(async (resolve, reject) => {
     try {
       // https://mediasoup.org/documentation/v3/mediasoup/api/#WebRtcTransportOptions
       const webRtcTransport_options = {
         listenIps: [
           {
-            // ip: "127.0.0.1", //!!!! replace with relevant IP address
-            ip: "10.0.0.49", //!!!! replace with relevant IP address
-            //announcedIp: '3.39.0.224',
-            announcedIp: '3.39.0.224'
+            ip: listenip, //!!!! replace with relevant IP address
+            announcedIp: announceip
           }
         ],
         enableUdp: true,
