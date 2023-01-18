@@ -14,32 +14,30 @@ import fs from 'fs'
 // }
 
 // const httpsServer = https.createServer(options)
+
+// const io = new Server(httpsServer, {
+//   cors: {
+//     origin: "*",
+//     methods: ["GET", "POST"],
+//     allowedHeaders: ["my-custom-header"],
+//     credentials: true
+//   },
+// });
+
 // httpsServer.listen(4000, () => {
 //   console.log('listening on port: ' + 4000)
 // })
 
 
-// const httpServer = http.createServer(app);
-// const wsServer = SocketIO(httpServer);
-
+//! 서버에서 키는 경우 아래 부분 주석 풀고 윗 부분 주석 처리해야 함
 const app = express(); 
 const httpServer = http.createServer(app); 
-
-
-// let feAddr = process.env.FE
-// let socketAddr = process.env.SOCKET // 내 주소
-// if (process.platform != "linux") {
-// 	feAddr = "localhost"
-//   socketAddr = "127.0.0.1"
-// }
-
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
 
 const io = new Server(httpServer, {
-  // const io = new Server(httpsServer, {
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
@@ -51,6 +49,7 @@ const io = new Server(httpServer, {
   httpServer.listen(4000, () => {
     console.log('listening on port: ' + 4000)
   })
+
 const connections = io.of('/sock')
 
 let worker
@@ -106,41 +105,50 @@ connections.on('connection', async socket => {
   })
 
 
-
   //! 캔버스.js 관련 코드 시작 끝 (연준)
-  // socket.on('object-added', data => {
-  //   socket.broadcast.to(roomName).emit('new-add', data);
-  // })
-  // socket.on('imageobj-added', data => {
-  // socket.broadcast.to(roomName).emit('new-addimg', data);
-  // })
-  // socket.on('path-added', data => {
-  // socket.broadcast.to(roomName).emit('new-addP', data);
-  // })
-  // socket.on('object-modified', data => {
-  //   socket.broadcast.to(roomName).emit('new-modification', data);
-  // })
-  // socket.on('object-deleted', data => {
-  // socket.broadcast.to(roomName).emit('deleteallcanvas', data);
-  // })
-  // socket.on('object-clear', data => {
-  // socket.broadcast.to(roomName).emit('clearcanvas', data);
-  // })
+  //todo: 나중에 방에만 갈 수 있도록 수정 필요 
+  socket.on('object-added', data => {
+    // socket.broadcast.to(roomName).emit('new-add', data);
+    socket.broadcast.emit('new-add', data);
+  })
+  socket.on('imageobj-added', data => {
+  // socket.broadcast.emit('new-addimg', data);
+  socket.broadcast.emit('new-addimg', data);
+  })
+  socket.on('path-added', data => {
+  // socket.broadcast.emit('new-addP', data);
+  socket.broadcast.emit('new-addP', data);
+  })
+  socket.on('object-modified', data => {
+    // socket.broadcast.emit('new-modification', data);
+    socket.broadcast.emit('new-modification', data);
+  })
+  socket.on('object-deleted', data => {
+  // socket.broadcast.emit('deleteallcanvas', data);
+  socket.broadcast.emit('deleteallcanvas', data);
+  })
+  socket.on('object-clear', data => {
+  // socket.broadcast.emit('clearcanvas', data);
+  socket.broadcast.emit('clearcanvas', data);
+  })
 //! 캔버스.js 관련 코드 끝
 
 //! 퍼즐.js 관련 코드 시작 (연준, 봉수)
 
-  // socket.on('sendPuzzleURL', data =>{
-  //   socket.broadcast.to(roomName).emit('puzzleStart', data);
-  // })
+  socket.on('sendPuzzleURL', data =>{
+    // socket.broadcast.emit('puzzleStart', data);
+    socket.broadcast.emit('puzzleStart', data);
+  })
 
-  // socket.on('move-puzzle', data =>{
-  //   socket.broadcast.to(roomName).emit('movesinglepuzzle',data);
-  // })
+  socket.on('move-puzzle', data =>{
+    // socket.broadcast.emit('movesinglepuzzle',data);
+    socket.broadcast.emit('movesinglepuzzle',data);
+  })
 
-  // socket.on('clickup-puzzle', data =>{
-  //   socket.broadcast.to(roomName).emit('solvedpuzzle', data);
-  // })
+  socket.on('clickup-puzzle', data =>{
+    // socket.broadcast.emit('solvedpuzzle', data);
+    socket.broadcast.emit('solvedpuzzle', data);
+  })
 //! 퍼즐.js 관련 코드 끝
 
   const removeItems = (items, socketId, type) => {
@@ -196,7 +204,7 @@ connections.on('connection', async socket => {
       }
     }
 
-    console.log("🚀🚀🚀🚀", userName, peers[socket.id])
+    // console.log("🚀🚀🚀🚀", userName, peers[socket.id])
     console.log("joinRoom 함수 🚀🚀🚀🚀")
     // get Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
@@ -342,7 +350,6 @@ connections.on('connection', async socket => {
         const isNewSocketHost = peers[socketId].peerDetails.isAdmin
       
         //Todo: 아래 emit 인자 내용 달라짐 -> 컨트롤러에서 수정 필요 
-        console.log('44444$$$$$$$', socketId)
         producerSocket.emit('new-producer', { producerId: id , socketName: socketName, socketId: socketId , isNewSocketHost})
       }
     })
@@ -482,18 +489,15 @@ connections.on('connection', async socket => {
   })
 
   //!!!!!! 석규 합친 부분 (01/15)
-  socket.on('video-out', ({studentSocketId, on}) =>{
+  socket.on("video-out", ({studentSocketId, on}) =>{
+    console.log("받았다")
     //소켓아이디와 같은 프로듀서를 찾아서 onOff를 전달
-    socket.to(studentSocketId).emit('student-video-controller', {
-      on
-    })
+    socket.to(studentSocketId).emit('student-video-controller', {on})
   }) 
 
-  socket.on('audio-out', ({studentSocketId, on}) =>{
+  socket.on("audio-out", ({studentSocketId, on}) =>{
     console.log(studentSocketId  + "🙊 조용히 하세요")
-    socket.to(studentSocketId).emit('student-audio-controller', {
-      on
-    })
+    socket.to(studentSocketId).emit('student-audio-controller', {on})
   }) 
   
 
@@ -540,7 +544,8 @@ const createWebRtcTransport = async (router) => {
           {
             // ip: "127.0.0.1", //!!!! replace with relevant IP address
             ip: "10.0.0.49", //!!!! replace with relevant IP address
-            // announcedIp: '3.39.0.224',
+            //announcedIp: '3.39.0.224',
+            announcedIp: '3.39.0.224'
           }
         ],
         enableUdp: true,
