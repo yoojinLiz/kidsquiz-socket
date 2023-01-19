@@ -511,9 +511,13 @@ socket.on('solveSign', () =>{
     //todo: 백엔드에서 퀴즈 찾아와야 함 
     console.log("퀴즈")
     const quizId = quizNumber
-    const question = "다음 중 겨울 잠 자는 동물은 어떤 동물일까요 ?"
-    const choice1 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/upload/%E1%84%86%E1%85%AE%E1%86%AB%E1%84%8C%E1%85%A6+%E1%84%90%E1%85%A9%E1%84%81%E1%85%B5+.jpeg"
-    const choice2 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/upload/%E1%84%86%E1%85%AE%E1%86%AB%E1%84%8C%E1%85%A6+%E1%84%83%E1%85%A1%E1%84%85%E1%85%A1%E1%86%B7%E1%84%8C%E1%85%B1.png"
+    const question = "다음 중 겨울 잠을 자는 동물은 어떤 동물일까요 ?"
+    //choice1 다람쥐
+    const choice1 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/upload/%E1%84%86%E1%85%AE%E1%86%AB%E1%84%8C%E1%85%A6+%E1%84%83%E1%85%A1%E1%84%85%E1%85%A1%E1%86%B7%E1%84%8C%E1%85%B1.png"
+    
+    //choice2 토끼
+    const choice2 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/upload/%E1%84%86%E1%85%AE%E1%86%AB%E1%84%8C%E1%85%A6+%E1%84%90%E1%85%A9%E1%84%81%E1%85%B5+.jpeg"
+
     const rightAnswer = 1
     //퀴즈를 시작하는 것은 항상 선생님! 
     callback(question, choice1, choice2, rightAnswer)
