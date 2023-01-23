@@ -8,28 +8,6 @@ import https from 'httpolyglot';
 import http from "http"; //! 추가
 import fs from 'fs'
 
-// const options = {
-//   key: fs.readFileSync('./server/ssl/key.pem', 'utf-8'),
-//   cert: fs.readFileSync('./server/ssl/cert.pem', 'utf-8')
-// }
-
-// const httpsServer = https.createServer(options)
-
-// const io = new Server(httpsServer, {
-//   cors: {
-//     origin: "*",
-//     methods: ["GET", "POST"],
-//     allowedHeaders: ["my-custom-header"],
-//     credentials: true
-//   },
-// });
-
-// httpsServer.listen(4000, () => {
-//   console.log('listening on port: ' + 4000)
-// })
-
-
-//! 서버에서 키는 경우 아래 부분 주석 풀고 윗 부분 주석 처리해야 함
 const app = express(); 
 const httpServer = http.createServer(app); 
 
@@ -58,6 +36,10 @@ let peers = {}          // { socketId1: { roomName1, socket, transports = [id1, 
 let transports = []     // [ { socketId1, roomName1, transport, consumer }, ... ]
 let producers = []      // [ { socketId1, roomName1, producer, }, ... ]
 let consumers = []      // [ { socketId1, roomName1, consumer, }, ... ]
+
+//! [커서]
+let sequenceNumberByClient = new Map();
+let cursorPositionsSaved = {};
 
 
 //! 가장 먼저해야 하는 작업 : worker를 생성하는 것 :-) worker가 있어야 router도 transport도 생성할 수 있다. 
@@ -98,12 +80,37 @@ const mediaCodecs = [
 ]
 
 connections.on('connection', async socket => {
-  // console.log(socket.id)
-  
   socket.emit('connection-success', {
     socketId: socket.id,
   })
 
+  //! [커서] (유진 테스트) 마우스 관련 코드 시작
+
+
+  //클라이언트에서 마우스가 움직일 때마다 보내주는 마우스 좌표 정보 (data)
+  socket.on('mousemove', (data) => {
+    console.info(data, socket.id);
+    // let mousemove_data = data;
+    // mousemove_data.id = socket.id; // 좌표 + socket 정보 
+    // socket.emit('mousemove', data);
+    
+    socket.broadcast.emit('mousemove', data, socket.id, socket.name);
+
+    cursorPositionsSaved[socket.id] = data; // 소켓별 좌표 정보 갱신
+  });  
+  //! (유진 테스트) 마우스 관련 코드 끝
+
+  //🐭 유나 : 마우스 테스트
+  socket.on('mouseHidden', (data) => {
+    console.log("테스트 중입니다.")
+    socket.emit('studentMouseHidden')
+    socket.to(data.roomName).emit('studentMouseHidden');
+  })
+
+  socket.on('mouseShow', (data) => {
+    socket.emit('studentMouseShow')
+    socket.to(data.roomName).emit('studentMouseShow');
+  })
 
   //! 캔버스.js 관련 코드 시작 끝 (연준)
   //todo: 나중에 방에만 갈 수 있도록 수정 필요 
@@ -131,12 +138,12 @@ connections.on('connection', async socket => {
   // socket.broadcast.emit('clearcanvas', data);
   socket.broadcast.emit('clearcanvas', data);
   })
-//! 캔버스.js 관련 코드 끝
+  //! 캔버스.js 관련 코드 끝
 
-//! 퍼즐.js 관련 코드 시작 (연준, 봉수)
-socket.on('solveSign', () =>{   
-  connections.emit('allsolve');
-})
+  //! 퍼즐.js 관련 코드 시작 (연준, 봉수)
+  socket.on('solveSign', () =>{   
+    connections.emit('allsolve');
+  })
 
   socket.on('sendPuzzleURL', data =>{
     // socket.broadcast.emit('puzzleStart', data);
@@ -152,7 +159,7 @@ socket.on('solveSign', () =>{
     // socket.broadcast.emit('solvedpuzzle', data);
     socket.broadcast.emit('solvedpuzzle', data);
   })
-//! 퍼즐.js 관련 코드 끝
+  //! 퍼즐.js 관련 코드 끝
 
   const removeItems = (items, socketId, type) => {
     items.forEach(item => {
@@ -173,20 +180,17 @@ socket.on('solveSign', () =>{
     transports = removeItems(transports, socket.id, 'transport')
 
     try{
-    
-    const { roomName } = peers[socket.id]
-    delete peers[socket.id]
+      const { roomName } = peers[socket.id]
+      delete peers[socket.id]
 
     // remove socket from room
     rooms[roomName] = {
       router: rooms[roomName].router,
       peers: rooms[roomName].peers.filter(socketId => socketId !== socket.id)
     }
-  }
-  catch(e){
-    
-  }
-  })
+    }
+    catch(e){}
+    })
 
   socket.on('joinRoom', async (roomName, userName, isHost, callback) => {
     // create Router if it does not exist
@@ -202,24 +206,25 @@ socket.on('solveSign', () =>{
       consumers: [],
       peerDetails: {
         name: userName,
-        // isAdmin: false,   // Is this Peer the Admin?
         isAdmin: isHost,   // Is this Peer the Admin?
       }
     }
-
-    // console.log("🚀🚀🚀🚀", userName, peers[socket.id])
-    console.log("joinRoom 함수 🚀🚀🚀🚀")
     // get Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
+
+      // [커서]mouseStart 최초 시작 -> 현재 해당 방의 소켓 좌표들을 전달해준다 
+      socket.emit('mouseStart', { message: 'mouseStart!', id: socket.id, cursorPositionsSaved: cursorPositionsSaved});
+      const id = socket.id
+      socket.name = userName
+    
+      //Initialize this client's sequence number
+      sequenceNumberByClient.set(socket, 1);
 
     // call callback from the client and send back the rtpCapabilities
     callback({ rtpCapabilities })
   })
 
-  socket.on("moveMove", (x,y,name) => {
-    // console.log("monseMove!",x,y,name)
-    // socket.emit()
-  })
+
   const createRoom = async (roomName, socketId) => {
     // worker.createRouter(options)
     // options = { mediaCodecs, appData }
@@ -374,6 +379,7 @@ socket.on('solveSign', () =>{
     console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
     // Error: connect() already called [method:transport.connect] 에러 방지 
     if (getTransport(socket.id).dtlsState == "new") {
+        console.log("🌼🌼🌼connect already called 에러 잡기🌼🌼🌼 : dtlsState 는", getTransport(socket.id).dtlsState )
         getTransport(socket.id).connect({ dtlsParameters })
     }
   })
@@ -415,7 +421,13 @@ socket.on('solveSign', () =>{
     const consumerTransport = transports.find(transportData => (
       transportData.consumer && transportData.transport.id == serverConsumerTransportId
     )).transport
+   console.log("consumerTransport의 dtlsState 확인 🌼🌼🌼", consumerTransport.dtlsState)
     await consumerTransport.connect({ dtlsParameters })
+  })
+  
+  //![커서]
+  socket.on("closeCursor", (socketIdLeaving)=> {
+    delete cursorPositionsSaved.socketIdLeaving;
   })
 
   socket.on('consume', async ({ rtpCapabilities, remoteProducerId, serverConsumerTransportId }, callback) => {
@@ -461,6 +473,8 @@ socket.on('solveSign', () =>{
           consumers = consumers.filter(consumerData => consumerData.consumer.id !== consumer.id)
         })
 
+        
+
         addConsumer(consumer, roomName)
 
         // from the consumer extract the following params
@@ -491,6 +505,7 @@ socket.on('solveSign', () =>{
     console.log('consumer resume')
     const { consumer } = consumers.find(consumerData => consumerData.consumer.id === serverConsumerId)
     await consumer.resume()
+    
   })
 
   //!!!!!! 석규 합친 부분 (01/15)
@@ -541,6 +556,11 @@ socket.on('solveSign', () =>{
   
   )
   //! 퀴즈 관련 코드 끝!
+
+
+
+
+
 
 }) // ! socket connction 끝 
 
