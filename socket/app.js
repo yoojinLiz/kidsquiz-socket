@@ -495,7 +495,7 @@ connections.on('connection', async socket => {
   
 
   // [퀴즈]
-  socket.on("startQuiz", (quiz, choice1, choice2, rightAnswer, socketId) => {
+  socket.on("startQuiz", (question, choice1, choice2, rightAnswer, socketId) => {
     console.log("퀴즈")
 
     // const question = "다음 중 겨울 잠을 자는 동물은 어떤 동물일까요 ?"
@@ -503,7 +503,7 @@ connections.on('connection', async socket => {
     // const choice2 = "https://kidsquizbucket.s3.ap-northeast-2.amazonaws.com/upload/%E1%84%86%E1%85%AE%E1%86%AB%E1%84%8C%E1%85%A6+%E1%84%90%E1%85%A9%E1%84%81%E1%85%B5+.jpeg"
     // const rightAnswer = 1
     // callback(question, choice1, choice2, rightAnswer) //퀴즈를 시작하는 것은 항상 선생님! 
-    
+
     socket.broadcast.emit("startQuiz", question, choice1, choice2, rightAnswer, socketId)
   } )
 
