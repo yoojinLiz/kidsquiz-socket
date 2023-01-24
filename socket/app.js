@@ -329,12 +329,13 @@ connections.on('connection', async socket => {
   socket.on('getProducers', callback => {
     const { roomName } = peers[socket.id]
     const socketName = peers[socket.id].peerDetails.name
-    
     let producerList = []
-  
+    
     producers.forEach(producerData => {
       if (producerData.socketId !== socket.id && producerData.roomName === roomName) {
-        producerList = [...producerList, [producerData.producer.id, peers[producerData.socketId].peerDetails.name, producerData.socketId, peers[producerData.socketId].peerDetails.isAdmin]] 
+        // console.log(`저는 ${socket.name}이고 producerName은 ${ peers[producerData.socketId].peerDetails.name} 이에요! `)
+        producerList = [...producerList, [producerData.producer.id,  peers[producerData.socketId].peerDetails.name, producerData.socketId, peers[producerData.socketId].peerDetails.isAdmin]] 
+        
       }
     })
     callback(producerList) // producerList를 담아서 클라이언트측 콜백함수 실행 
@@ -369,6 +370,7 @@ connections.on('connection', async socket => {
     console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
     if (getTransport(socket.id).dtlsState !== "connected")  {
       try {
+        console.log("찍어나보자..", getTransport(socket.id).dtlsState)
         getTransport(socket.id).connect({ dtlsParameters })
       }
       catch(e) {
@@ -405,9 +407,21 @@ connections.on('connection', async socket => {
       transportData.consumer && transportData.transport.id == serverConsumerTransportId
     )).transport
    console.log("consumerTransport의 dtlsState 확인 🌼🌼🌼", consumerTransport.dtlsState)
+   try {
     await consumerTransport.connect({ dtlsParameters })
+   } catch(e) {console.log("transport-recv-connect", e)}
   })
   
+  //! [캔버스 업데이트]
+  socket.on("atarashimember", (newbeesocket, teacherSocket) => {
+    socket.emit('newestmember', newbeesocket)
+  })
+
+  socket.on('canvasUpdate', (socketID, objs) => {
+    socket.to(socketID).emit('canvassetnewuser', objs);
+  })
+
+
   //![커서]
   socket.on("closeCursor", (socketIdLeaving)=> {
     delete cursorPositionsSaved.socketIdLeaving;
