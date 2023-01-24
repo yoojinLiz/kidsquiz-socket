@@ -97,17 +97,23 @@ connections.on('connection', async socket => {
     socketId: socket.id,
   })
 
+  //[커서] : 서버에서 클라이언트로 비율 정보를 전송하고 클라이언트는 이를 받아 적용함
+  // socket.emit('ratio');
+// socket.on('ratio', (a, b) => {
+//   console.log(a);
+//   console.log(b);
+// })
+
   //[커서] 클라이언트에서 마우스가 움직일 때마다 보내주는 마우스 좌표 정보 (data)
   socket.on('mousemove', (data) => {
-    console.info(data, socket.id);
+    // console.info(data, socket.id);
     socket.broadcast.emit('mousemove', data, socket.id, socket.name);
-
     cursorPositionsSaved[socket.id] = data; // 소켓별 좌표 정보 갱신
   });  
 
+
   //[커서] 🐭 유나 : 마우스 테스트
   socket.on('mouseHidden', (data) => {
-    console.log("테스트 중입니다.")
     socket.emit('studentMouseHidden')
     socket.to(data.roomName).emit('studentMouseHidden');
   })
