@@ -495,7 +495,7 @@ connections.on('connection', async socket => {
   
 
   // [퀴즈]
-  socket.on("startQuiz", (question, choice1, choice2, rightAnswer, socketId) => {
+  socket.on("startQuiz", (question, choice1, choice2, rightAnswer, socketId, callback) => {
     console.log("퀴즈")
 
     // const question = "다음 중 겨울 잠을 자는 동물은 어떤 동물일까요 ?"
