@@ -1,1 +1,0 @@
-use openssl or any other tool to create your key/cert files

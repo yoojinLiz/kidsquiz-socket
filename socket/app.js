@@ -99,7 +99,6 @@ connections.on('connection', async socket => {
 
   //[커서] 클라이언트에서 마우스가 움직일 때마다 보내주는 마우스 좌표 정보 (data)
   socket.on('mousemove', (data) => {
-    console.info(data, socket.id);
     socket.broadcast.emit('mousemove', data, socket.id, socket.name);
 
     cursorPositionsSaved[socket.id] = data; // 소켓별 좌표 정보 갱신
