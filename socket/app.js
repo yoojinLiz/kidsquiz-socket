@@ -197,7 +197,6 @@ connections.on('connection', async socket => {
 
   socket.on('joinRoom', async (roomName, userName, isHost, callback) => {
     socket.join(roomName);
-    console.log(`${userName} just joined the Room `)
     const router1 = await createRoom(roomName, socket.id)
     peers[socket.id] = {
       socket,
@@ -210,6 +209,7 @@ connections.on('connection', async socket => {
         isAdmin: isHost, 
       }
     }
+    console.log(`${userName} just joined the Room `)
     // Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
 
@@ -366,12 +366,17 @@ connections.on('connection', async socket => {
     }
   }
 
-  socket.on('transport-connect', ({ dtlsParameters }) => {
+  socket.on('transport-connect', async({ dtlsParameters }) => {
     console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
     if (getTransport(socket.id).dtlsState !== "connected")  {
       try {
-        console.log("찍어나보자..", getTransport(socket.id).dtlsState)
-        getTransport(socket.id).connect({ dtlsParameters })
+        // console.log("찍어나보자..", getTransport(socket.id).dtlsState)
+        const tempTransport = getTransport(socket.id)
+        if (tempTransport){
+          tempTransport.connect({ dtlsParameters })
+          console.log( tempTransport.dtlsState)
+        }
+        // getTransport(socket.id).connect({ dtlsParameters })
       }
       catch(e) {
         console.log(`transport-connect 도중 에러 발생. details : ${e}`)
@@ -502,9 +507,19 @@ connections.on('connection', async socket => {
   }) 
 
   socket.on("audio-out", ({studentSocketId, on}) =>{
-    console.log(studentSocketId  + "🙊 조용히 하세요")
+    // console.log(studentSocketId  + "🙊 조용히 하세요")
     socket.to(studentSocketId).emit('student-audio-controller', {on})
   }) 
+  
+    socket.on("notifyAudio", (studentSocketId, on, hostBool) => {
+      // console.log(`host값이 ${hostBool} ${studentSocketId}의 audio enabled 상태가 ${on} 이 되었음`)
+      if (!hostBool) { socket.broadcast.emit("notifyAudio", studentSocketId, on, hostBool) }
+    })
+    socket.on("notifyVideo", (studentSocketId, on, hostBool) => {
+      // console.log(`${studentSocketId}의 audio enabled 상태가 ${on} 이 되었음`)
+      if (!hostBool) { socket.broadcast.emit("notifyVideo", studentSocketId, on, hostBool) }
+    } )
+  
   
 
   // [퀴즈]
