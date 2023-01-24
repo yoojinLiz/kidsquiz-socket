@@ -3,14 +3,13 @@ import mediasoup from 'mediasoup'
 import express from "express";
 import dotenv from "dotenv"
 dotenv.config()
-import https from 'httpolyglot';
-
-import http from "http"; //! 추가
-import fs from 'fs'
+import http from "http"; 
 
 const app = express(); 
 const httpServer = http.createServer(app); 
+const PORT = 4000; 
 
+// aws 헬스체크용 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
@@ -23,12 +22,11 @@ const io = new Server(httpServer, {
       credentials: true
     },
   });
+  const connections = io.of('/sock')
 
-  httpServer.listen(4000, () => {
-    console.log('listening on port: ' + 4000)
+  httpServer.listen(PORT, () => {
+    console.log('listening on port: + ${PORT}')
   })
-
-const connections = io.of('/sock')
 
 let worker
 let rooms = {}          // { roomName1: { Router, rooms: [ sicketId1, ... ] }, ...}
@@ -37,12 +35,26 @@ let transports = []     // [ { socketId1, roomName1, transport, consumer }, ... 
 let producers = []      // [ { socketId1, roomName1, producer, }, ... ]
 let consumers = []      // [ { socketId1, roomName1, consumer, }, ... ]
 
+/*
+  peers= {
+    소켓아이디 : {
+      socket: 소켓 정보,
+      roomName: 조인한 룸 이름(라우터 이름), 
+      transport: [],
+      producers: [],// 해당 소켓의 producer id들의 배열
+      consumers: [],
+      peerDetails: {
+        name: 로컬 스토리지의 유저 이름,
+        isAdmin: 선생님인지 아닌지 bool
+      }
+  }
+*/
+
 //! [커서]
 let sequenceNumberByClient = new Map();
 let cursorPositionsSaved = {};
 
 
-//! 가장 먼저해야 하는 작업 : worker를 생성하는 것 :-) worker가 있어야 router도 transport도 생성할 수 있다. 
 const createWorker = async () => {
   worker = await mediasoup.createWorker({
     rtcMinPort: 2000,
@@ -50,6 +62,7 @@ const createWorker = async () => {
   })
   console.log(`worker pid ${worker.pid}`)
 
+  // mediasoup 내장 함수. worker process 가 예상치 않게 끊겼을 때 'died' 이벤트가 emit된다
   worker.on('died', error => {
     // This implies something serious happened, so kill the application
     console.error('mediasoup worker has died')
@@ -59,7 +72,7 @@ const createWorker = async () => {
   return worker
 }
 
-// We create a Worker as soon as our application starts
+//! 가장 먼저해야 하는 작업 : worker 생성 :-) worker가 있어야 router도 transport도 생성할 수 있다.  
 worker = createWorker()
 
 const mediaCodecs = [
@@ -84,23 +97,15 @@ connections.on('connection', async socket => {
     socketId: socket.id,
   })
 
-  //! [커서] (유진 테스트) 마우스 관련 코드 시작
-
-
-  //클라이언트에서 마우스가 움직일 때마다 보내주는 마우스 좌표 정보 (data)
+  //[커서] 클라이언트에서 마우스가 움직일 때마다 보내주는 마우스 좌표 정보 (data)
   socket.on('mousemove', (data) => {
     console.info(data, socket.id);
-    // let mousemove_data = data;
-    // mousemove_data.id = socket.id; // 좌표 + socket 정보 
-    // socket.emit('mousemove', data);
-    
     socket.broadcast.emit('mousemove', data, socket.id, socket.name);
 
     cursorPositionsSaved[socket.id] = data; // 소켓별 좌표 정보 갱신
   });  
-  //! (유진 테스트) 마우스 관련 코드 끝
 
-  //🐭 유나 : 마우스 테스트
+  //[커서] 🐭 유나 : 마우스 테스트
   socket.on('mouseHidden', (data) => {
     console.log("테스트 중입니다.")
     socket.emit('studentMouseHidden')
@@ -112,8 +117,7 @@ connections.on('connection', async socket => {
     socket.to(data.roomName).emit('studentMouseShow');
   })
 
-  //! 캔버스.js 관련 코드 시작 끝 (연준)
-  //todo: 나중에 방에만 갈 수 있도록 수정 필요 
+  //! [fabric] todo: 나중에 방에만 갈 수 있도록 수정 필요 
   socket.on('object-added', data => {
     // socket.broadcast.to(roomName).emit('new-add', data);
     socket.broadcast.emit('new-add', data);
@@ -138,9 +142,9 @@ connections.on('connection', async socket => {
   // socket.broadcast.emit('clearcanvas', data);
   socket.broadcast.emit('clearcanvas', data);
   })
-  //! 캔버스.js 관련 코드 끝
+  //! fabric.js 관련 코드 끝
 
-  //! 퍼즐.js 관련 코드 시작 (연준, 봉수)
+  //! [퍼즐] 퍼즐.js 관련 코드 시작 
   socket.on('solveSign', () =>{   
     connections.emit('allsolve');
   })
@@ -173,7 +177,7 @@ connections.on('connection', async socket => {
   }
 
   socket.on('disconnect', () => {
-    // do some cleanup
+    // 연결이 끊긴 socket 정리
     console.log('peer disconnected')
     consumers = removeItems(consumers, socket.id, 'consumer')
     producers = removeItems(producers, socket.id, 'producer')
@@ -183,7 +187,7 @@ connections.on('connection', async socket => {
       const { roomName } = peers[socket.id]
       delete peers[socket.id]
 
-    // remove socket from room
+    //rooms에서 해당 소켓 정보 삭제
     rooms[roomName] = {
       router: rooms[roomName].router,
       peers: rooms[roomName].peers.filter(socketId => socketId !== socket.id)
@@ -193,10 +197,8 @@ connections.on('connection', async socket => {
     })
 
   socket.on('joinRoom', async (roomName, userName, isHost, callback) => {
-    // create Router if it does not exist
-    // const router1 = rooms[roomName] && rooms[roomName].get('data').router || await createRoom(roomName, socket.id)
     socket.join(roomName);
-
+    console.log(`${userName} just joined the Room `)
     const router1 = await createRoom(roomName, socket.id)
     peers[socket.id] = {
       socket,
@@ -206,19 +208,19 @@ connections.on('connection', async socket => {
       consumers: [],
       peerDetails: {
         name: userName,
-        isAdmin: isHost,   // Is this Peer the Admin?
+        isAdmin: isHost, 
       }
     }
-    // get Router RTP Capabilities
+    // Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
 
-      // [커서]mouseStart 최초 시작 -> 현재 해당 방의 소켓 좌표들을 전달해준다 
-      socket.emit('mouseStart', { message: 'mouseStart!', id: socket.id, cursorPositionsSaved: cursorPositionsSaved});
-      const id = socket.id
-      socket.name = userName
-    
-      //Initialize this client's sequence number
-      sequenceNumberByClient.set(socket, 1);
+    // [커서]mouseStart 최초 시작 -> 현재 해당 방의 소켓 좌표들을 전달해준다 
+    socket.emit('mouseStart', { message: 'mouseStart!', id: socket.id, cursorPositionsSaved: cursorPositionsSaved});
+    const id = socket.id
+    socket.name = userName
+  
+    //Initialize this client's sequence number
+    sequenceNumberByClient.set(socket, 1);
 
     // call callback from the client and send back the rtpCapabilities
     callback({ rtpCapabilities })
@@ -226,11 +228,6 @@ connections.on('connection', async socket => {
 
 
   const createRoom = async (roomName, socketId) => {
-    // worker.createRouter(options)
-    // options = { mediaCodecs, appData }
-    // mediaCodecs -> defined above
-    // appData -> custom application data - we are not supplying any
-    // none of the two are required
     let router1
     let peers = []
     if (rooms[roomName]) {
@@ -240,7 +237,7 @@ connections.on('connection', async socket => {
       router1 = await worker.createRouter({ mediaCodecs, })
     }
     
-    console.log(`Router ID: ${router1.id}`, peers.length)
+    // console.log(`Router ID: ${router1.id}`, peers.length)
 
     rooms[roomName] = {
       router: router1,
@@ -250,14 +247,21 @@ connections.on('connection', async socket => {
     return router1
   }
 
-  // Client emits a request to create server side Transport
-  // We need to differentiate between the producer and consumer transports
+ // 클라이언트에서 서버측 transport를 생성하기 위해 요청할 때 emit 
   socket.on('createWebRtcTransport', async ({ consumer }, callback) => {
-    // get Room Name from Peer's properties
+    
+    if (!consumer) {
+      console.log(socket.name, " producer로서 createWebRtcTransport 호출")  
+    } else {
+      console.log(socket.name, " consumer로서 createWebRtcTransport 호출")  
+    }
+  
     const roomName = peers[socket.id].roomName
-
-    // get Router (Room) object this peer is in based on RoomName
     const router = rooms[roomName].router
+
+    // [체크]
+    const [verify] = transports.filter(transport => transport.socketId === socket.id && !transport.consumer)
+    // console.log("🔥", verify)    
 
     createWebRtcTransport(router).then(
       transport => {
@@ -279,8 +283,6 @@ connections.on('connection', async socket => {
   })
 
   const addTransport = async(transport, roomName, consumer) => {
-    console.log("addTransport호출")
-
     transports = [
       ...transports,
       { socketId: socket.id, transport, roomName, consumer, }
@@ -298,7 +300,8 @@ connections.on('connection', async socket => {
   const addProducer = (producer, roomName) => {
     producers = [
       ...producers,
-      { socketId: socket.id, producer, roomName, name: peers[socket.id].peerDetails.name}
+      // { socketId: socket.id, producer, roomName, name: peers[socket.id].peerDetails.name}
+      { socketId: socket.id, producer, roomName, name: socket.name, kind: producer.kind}
     ]
     peers[socket.id] = {
       ...peers[socket.id],
@@ -310,13 +313,11 @@ connections.on('connection', async socket => {
   }
 
   const addConsumer = (consumer, roomName) => {
-    // add the consumer to the consumers list
     consumers = [
       ...consumers,
       { socketId: socket.id, consumer, roomName, }
     ]
 
-    // add the consumer id to the peers list
     peers[socket.id] = {
       ...peers[socket.id],
       consumers: [
@@ -327,38 +328,30 @@ connections.on('connection', async socket => {
   }
   
   socket.on('getProducers', callback => {
-    //return all producer transports
     const { roomName } = peers[socket.id]
     const socketName = peers[socket.id].peerDetails.name
     
-
     let producerList = []
   
     producers.forEach(producerData => {
       if (producerData.socketId !== socket.id && producerData.roomName === roomName) {
-        // console.log("🧐🧐", peers[producerData.socketId].peerDetails.isAdmin)
         producerList = [...producerList, [producerData.producer.id, peers[producerData.socketId].peerDetails.name, producerData.socketId, peers[producerData.socketId].peerDetails.isAdmin]] 
-        
       }
     })
-
-    // return the producer list back to the client
-    callback(producerList)
+    callback(producerList) // producerList를 담아서 클라이언트측 콜백함수 실행 
   })
 
-  
+  // 새로운 producer가 생긴 경우 new-producer 를 emit 해서 consume 할 수 있게 알려줌 
   const informConsumers = (roomName, socketId, id) => {
-    console.log(`just joined, producerid: ${id}  room: ${roomName}, socketId: ${socketId}`)
-    // A new producer just joined
-    // let all consumers to consume this producer
+    
     producers.forEach(producerData => {
       if (producerData.socketId !== socketId && producerData.roomName === roomName) {
         const producerSocket = peers[producerData.socketId].socket
         // use socket to send producer id to producer
         const socketName = peers[socketId].peerDetails.name
         const isNewSocketHost = peers[socketId].peerDetails.isAdmin
-      
-        //Todo: 아래 emit 인자 내용 달라짐 -> 컨트롤러에서 수정 필요 
+
+        console.log(`new-producer emit! socketName: ${socketName}, producerId: ${id}, kind : ${producerData.kind}` )
         producerSocket.emit('new-producer', { producerId: id , socketName: socketName, socketId: socketId , isNewSocketHost})
       }
     })
@@ -366,58 +359,49 @@ connections.on('connection', async socket => {
   const getTransport = (socketId) => {
     console.log("getTransport 에서 확인해보는 socketId. 이게 transports 상의 socketId와 같아야해", socketId)
     const [producerTransport] = transports.filter(transport => transport.socketId === socketId && !transport.consumer)
-
-    //!임시
-    // if (producerTransport) {
+    try {
       return producerTransport.transport 
-    // }
+    } catch(e) {
+      console.log(`getTransport 도중 에러 발생. details : ${e}`)
+    }
   }
 
-  // see client's socket.emit('transport-connect', ...)
   socket.on('transport-connect', ({ dtlsParameters }) => {
-    // console.log('DTLS PARAMS... ', { dtlsParameters })
     console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
-    // Error: connect() already called [method:transport.connect] 에러 방지 
-    if (getTransport(socket.id).dtlsState == "new") {
-        console.log("🌼🌼🌼connect already called 에러 잡기🌼🌼🌼 : dtlsState 는", getTransport(socket.id).dtlsState )
+    if (getTransport(socket.id).dtlsState !== "connected")  {
+      try {
         getTransport(socket.id).connect({ dtlsParameters })
+      }
+      catch(e) {
+        console.log(`transport-connect 도중 에러 발생. details : ${e}`)
+      }
     }
   })
-
-  // see client's socket.emit('transport-produce', ...)
+ 
   socket.on('transport-produce', async ({ kind, rtpParameters, appData, mysocket }, callback) => {
-    // call produce based on the prameters from the client
-
-    console.log(socket.id, "가 emit('transport-produce', ...)🔥")
     const producer = await getTransport(socket.id).produce({
       kind,
       rtpParameters,
     })
-
-    // add producer to the producers array
-    const { roomName } = peers[socket.id]
-
-    addProducer(producer, roomName)
-
-    informConsumers(roomName, socket.id, producer.id)
-
     console.log('Producer ID: ', producer.id, producer.kind)
+
+    //todo: 아래 부분 callback 아래쪽으로 옮기고 테스트 
+    const { roomName } = peers[socket.id]
+    addProducer(producer, roomName)
+    informConsumers(roomName, socket.id, producer.id)
 
     producer.on('transportclose', () => {
       console.log('transport for this producer closed ')
       producer.close()
     })
 
-    // Send back to the client the Producer's id
     callback({
       id: producer.id,
       producersExist: producers.length>1 ? true : false
     })
   })
 
-  // see client's socket.emit('transport-recv-connect', ...)
   socket.on('transport-recv-connect', async ({ dtlsParameters, serverConsumerTransportId }) => {
-    console.log(`DTLS PARAMS: ${dtlsParameters}`)
     const consumerTransport = transports.find(transportData => (
       transportData.consumer && transportData.transport.id == serverConsumerTransportId
     )).transport
@@ -432,20 +416,13 @@ connections.on('connection', async socket => {
 
   socket.on('consume', async ({ rtpCapabilities, remoteProducerId, serverConsumerTransportId }, callback) => {
     try {
-
       const { roomName } = peers[socket.id]
       const  userName  = peers[socket.id].peerDetails.name
-      // console.log("userName! 🎉🎉🎉🎉", userName)
-
-
       const router = rooms[roomName].router
       
       let consumerTransport = transports.find(transportData => (
         transportData.consumer && transportData.transport.id == serverConsumerTransportId
       )).transport
-
-      // check if the router can consume the specified producer
-      
 
       if (router.canConsume({
         producerId: remoteProducerId,
@@ -455,8 +432,7 @@ connections.on('connection', async socket => {
         const consumer = await consumerTransport.consume({
           producerId: remoteProducerId,
           rtpCapabilities,
-          paused: true,  //! 공식문서에서 이를 권고. (index.js 에서 마지막에 consumer-resume emit 해 줌 )
-          // 연결(?)이 끝나면(?) 그때 resume 하라고 공식문서에서 권고 -> consumer-resume 함수에서 resume 함
+          paused: true,  //공식문서에서 권고하는 방식. 클라이언트에서 consumer-resume emit 할 때 resume
         })
 
         consumer.on('transportclose', () => {
@@ -473,8 +449,6 @@ connections.on('connection', async socket => {
           consumers = consumers.filter(consumerData => consumerData.consumer.id !== consumer.id)
         })
 
-        
-
         addConsumer(consumer, roomName)
 
         // from the consumer extract the following params
@@ -485,7 +459,7 @@ connections.on('connection', async socket => {
           kind: consumer.kind,
           rtpParameters: consumer.rtpParameters,
           serverConsumerId: consumer.id,
-          userName:userName,  //!!!!!
+          userName:userName, 
         }
 
         // send the parameters to the client
@@ -508,7 +482,7 @@ connections.on('connection', async socket => {
     
   })
 
-  //!!!!!! 석규 합친 부분 (01/15)
+  // [비디오, 오디오 제어]
   socket.on("video-out", ({studentSocketId, on}) =>{
     //소켓아이디와 같은 프로듀서를 찾아서 onOff를 전달
     socket.to(studentSocketId).emit('student-video-controller', {on})
@@ -520,7 +494,7 @@ connections.on('connection', async socket => {
   }) 
   
 
-  //! 퀴즈 관련 코드 시작!
+  // [퀴즈]
   socket.on("startQuiz", (quizNumber, socketId, callback) => {
     console.log(quizNumber, socketId) 
     //todo: 백엔드에서 퀴즈 찾아와야 함 
@@ -540,28 +514,17 @@ connections.on('connection', async socket => {
   } )
 
   socket.on("correct", (name, hostSocket)=> {
-    //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
     socket.to(hostSocket).emit("correctNotice", name)
     // socket.broadcast.emit("correctNotice", name)
   })
   socket.on("wrong", (name, hostSocket)=>{
-  //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
     socket.to(hostSocket).emit("wrongNotice", name)
     // socket.broadcast.emit("wrongNotice", name)
   })
   socket.on("finishQuiz", ()=>{
-    //todo: 전체가 아니라 선생님한테만 가도록 수정해야 해
       socket.broadcast.emit("finishQuiz")
-    }
-  
-  )
-  //! 퀴즈 관련 코드 끝!
-
-
-
-
-
-
+    }  
+  ) //! 퀴즈 관련 코드 끝!
 }) // ! socket connction 끝 
 
 let listenip ;
@@ -577,10 +540,8 @@ else {
 console.log("🎧 listenip is : ", listenip)
 
 const createWebRtcTransport = async (router) => {
-
   return new Promise(async (resolve, reject) => {
     try {
-      // https://mediasoup.org/documentation/v3/mediasoup/api/#WebRtcTransportOptions
       const webRtcTransport_options = {
         listenIps: [
           {
@@ -593,7 +554,6 @@ const createWebRtcTransport = async (router) => {
         preferUdp: true,
       }
 
-      // https://mediasoup.org/documentation/v3/mediasoup/api/#router-createWebRtcTransport
       let transport = await router.createWebRtcTransport(webRtcTransport_options)
       console.log(`transport id: ${transport.id}`)
 
