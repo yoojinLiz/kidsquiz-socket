@@ -371,6 +371,7 @@ connections.on('connection', async socket => {
     }
   }
   let socketConnect = {} //socket 아이디가 key, value는 Bool
+  let socketProduce = {} // socket 아이디가 key, value는 Bool
 
   socket.on('transport-connect', async({ dtlsParameters }) => {
     console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
@@ -393,10 +394,14 @@ connections.on('connection', async socket => {
   })
  
   socket.on('transport-produce', async ({ kind, rtpParameters, appData, mysocket }, callback) => {
-    const producer = await getTransport(socket.id).produce({
-      kind,
-      rtpParameters,
-    })
+    if (!socketProduce.id) {
+      const producer = await getTransport(socket.id).produce({
+        kind,
+        rtpParameters,
+      })
+      id= socket.id
+      socketProduce.id = true; 
+    }
     console.log('Producer ID: ', producer.id, producer.kind)
 
     //todo: 아래 부분 callback 아래쪽으로 옮기고 테스트 
