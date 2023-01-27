@@ -370,19 +370,21 @@ connections.on('connection', async socket => {
       console.log(`getTransport 도중 에러 발생. details : ${e}`)
     }
   }
+  let socketConnect = {} //socket 아이디가 key, value는 Bool
 
   socket.on('transport-connect', async({ dtlsParameters }) => {
     console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
-    if (getTransport(socket.id).dtlsState !== "connected")  {
+    if (getTransport(socket.id).dtlsState !== "connected" || getTransport(socket.id).dtlsState !== "connecting")  {
       try {
         // console.log("찍어나보자..", getTransport(socket.id).dtlsState)
         const tempTransport = getTransport(socket.id)
         if (tempTransport){
-          tempTransport.connect({ dtlsParameters }) 
-          tempTransport.appData.connected = true; //! 임시추가
+          if  (!socketConnect.socketId)
+            tempTransport.connect({ dtlsParameters })  
+            socketConnect.socketId = true;  //!임시
           console.log( tempTransport.dtlsState)
         }
-        // getTransport(socket.id).connect({ dtlsParameters })
+        
       }
       catch(e) {
         console.log(`transport-connect 도중 에러 발생. details : ${e}`)
