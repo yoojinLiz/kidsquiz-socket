@@ -399,7 +399,7 @@ connections.on('connection', async socket => {
         kind,
         rtpParameters,
       })
-      id= socket.id
+      const id= socket.id
       socketProduce.id = true; 
     }
     console.log('Producer ID: ', producer.id, producer.kind)
