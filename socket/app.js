@@ -196,10 +196,10 @@ connections.on('connection', async socket => {
     })
 
   socket.on('joinRoom', async (roomName, userName, isHost, callback) => {
-    if (userName === "노유나") {
-      console.log("유나인가: ", userName =="노유나", userName === "노유나")
-      return ;
-    }
+    // if (userName === "노유나") {
+    //   console.log("유나인가: ", userName =="노유나", userName === "노유나")
+    //   return ;
+    // }
     socket.join(roomName);
     const router1 = await createRoom(roomName, socket.id)
     peers[socket.id] = {
