@@ -371,7 +371,8 @@ connections.on('connection', async socket => {
     }
   }
   let socketConnect = {} //socket 아이디가 key, value는 Bool
-  let socketProduce = {} // socket 아이디가 key, value는 Bool
+  let socketAudioProduce = {} // socket 아이디가 key, value는 Bool
+  let socketVideoProduce = {} // socket 아이디가 key, value는 Bool
 
   socket.on('transport-connect', async({ dtlsParameters }) => {
     console.log(socket.id,"가 emit('transport-connect', ...) 🔥")
@@ -394,13 +395,21 @@ connections.on('connection', async socket => {
   })
  
   socket.on('transport-produce', async ({ kind, rtpParameters, appData, mysocket }, callback) => {
-    if (!socketProduce.id) {
+    
+
+    if ( (kind =="audio" && !socketAudioProduce.id) || (kind =="video" && !socketVideoProduce.id)) {
       const producer = await getTransport(socket.id).produce({
         kind,
         rtpParameters,
       })
       const id= socket.id
-      socketProduce.id = true; 
+      if (kind == "audio") {
+          socketAudioProduce.id = true; 
+      }
+      if (kind == "video") {
+        socketVideoProduce.id = true; 
+      }
+
       console.log('Producer ID: ', producer.id, producer.kind)
 
       //todo: 아래 부분 callback 아래쪽으로 옮기고 테스트 
