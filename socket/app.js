@@ -196,6 +196,9 @@ connections.on('connection', async socket => {
     })
 
   socket.on('joinRoom', async (roomName, userName, isHost, callback) => {
+    if (userName === "노유나") {
+      return 
+    }
     socket.join(roomName);
     const router1 = await createRoom(roomName, socket.id)
     peers[socket.id] = {
@@ -210,6 +213,7 @@ connections.on('connection', async socket => {
       }
     }
     console.log(`${userName} just joined the Room `)
+  
     // Router RTP Capabilities
     const rtpCapabilities = router1.rtpCapabilities
 
@@ -373,8 +377,8 @@ connections.on('connection', async socket => {
         // console.log("찍어나보자..", getTransport(socket.id).dtlsState)
         const tempTransport = getTransport(socket.id)
         if (tempTransport){
-          tempTransport.appData.connected = true; //! 임시추가
           tempTransport.connect({ dtlsParameters }) 
+          tempTransport.appData.connected = true; //! 임시추가
           console.log( tempTransport.dtlsState)
         }
         // getTransport(socket.id).connect({ dtlsParameters })
