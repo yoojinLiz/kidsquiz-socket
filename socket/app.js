@@ -402,22 +402,20 @@ connections.on('connection', async socket => {
       const id= socket.id
       socketProduce.id = true; 
       console.log('Producer ID: ', producer.id, producer.kind)
+
+      //todo: 아래 부분 callback 아래쪽으로 옮기고 테스트 
+      const { roomName } = peers[socket.id]
+      addProducer(producer, roomName)
+      informConsumers(roomName, socket.id, producer.id)
+      producer.on('transportclose', () => {
+        console.log('transport for this producer closed ')
+        producer.close()
+      })
+      callback({
+        id: producer.id,
+        producersExist: producers.length>1 ? true : false
+      })
     }
-
-    //todo: 아래 부분 callback 아래쪽으로 옮기고 테스트 
-    const { roomName } = peers[socket.id]
-    addProducer(producer, roomName)
-    informConsumers(roomName, socket.id, producer.id)
-
-    producer.on('transportclose', () => {
-      console.log('transport for this producer closed ')
-      producer.close()
-    })
-
-    callback({
-      id: producer.id,
-      producersExist: producers.length>1 ? true : false
-    })
   })
 
   socket.on('transport-recv-connect', async ({ dtlsParameters, serverConsumerTransportId }) => {
