@@ -373,8 +373,8 @@ connections.on('connection', async socket => {
         // console.log("찍어나보자..", getTransport(socket.id).dtlsState)
         const tempTransport = getTransport(socket.id)
         if (tempTransport){
-          // tempTransport.connect({ dtlsParameters }) // !임시
-          tempTransport.appData.connected = true; //! 임시 
+          tempTransport.appData.connected = true; //! 임시추가
+          tempTransport.connect({ dtlsParameters }) 
           console.log( tempTransport.dtlsState)
         }
         // getTransport(socket.id).connect({ dtlsParameters })
